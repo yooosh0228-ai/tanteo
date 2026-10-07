@@ -41,6 +41,13 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
+        NSHealthShareUsageDescription: Tanteo lee tu pulso y calorías para mostrarlos durante el partido.
+        NSHealthUpdateUsageDescription: Tanteo guarda cada partido como entrenamiento en Salud.
+    entitlements:
+      path: iOSApp/Tanteo.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.visionstudios.tanteo
@@ -63,6 +70,14 @@ targets:
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.visionstudios.tanteo
         WKRunsIndependentlyOfCompanionApp: true
+        WKBackgroundModes: [workout-processing]
+        NSHealthShareUsageDescription: Tanteo lee tu pulso y calorías para mostrarlos durante el partido.
+        NSHealthUpdateUsageDescription: Tanteo guarda cada partido como entrenamiento en Salud.
+    entitlements:
+      path: WatchApp/TanteoWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.visionstudios.tanteo.watchkitapp

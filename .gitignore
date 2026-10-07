@@ -6,3 +6,4 @@ DerivedData/
 .swiftpm/
 iOSApp/Info.plist
 WatchApp/Info.plist
+*.entitlements

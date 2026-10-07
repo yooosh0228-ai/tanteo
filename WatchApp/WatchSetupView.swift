@@ -6,6 +6,7 @@ struct WatchSetupView: View {
     @Environment(MatchStore.self) private var store
     @State private var config = MatchConfig()
     @State private var loaded = false
+    @AppStorage("recordWorkout") private var recordWorkout = true
 
     var body: some View {
         List {
@@ -37,6 +38,12 @@ struct WatchSetupView: View {
                     }
                     Toggle("Diferencia de 2", isOn: $config.winByTwo)
                 }
+            }
+
+            Section {
+                Toggle("Guardar en Salud", isOn: $recordWorkout)
+            } footer: {
+                Text("Registra tiempo, pulso y calorías, y deja la app en pantalla todo el partido.")
             }
 
             Section("¿Quién saca primero?") {

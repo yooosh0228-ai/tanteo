@@ -59,7 +59,8 @@ final class MatchStore {
 
     /// Cierra el partido en curso. Si tuvo al menos un punto, queda en el historial.
     func endMatch() {
-        guard let m = current else { return }
+        guard var m = current else { return }
+        m.markEnded()
         current = nil
         if !m.pointLog.isEmpty { archive(m, notify: true) }
         save()

@@ -2,20 +2,51 @@ import SwiftUI
 import WatchKit
 import ScoreKit
 
-/// Pantalla de juego: toca la mitad de arriba o la de abajo para sumarle el punto a ese equipo.
+/// Pantalla de juego: toca el cuadro del equipo que ganó el punto.
 struct WatchScoreView: View {
     @Environment(MatchStore.self) private var store
+    @Environment(WorkoutManager.self) private var workout
     @State private var showOptions = false
+    @State private var showChangeOfEnds = false
+    @State private var seenEvents = 0
 
     var body: some View {
         if let match = store.current {
             let s = match.state
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 header(s)
-                TeamButton(team: .a, state: s) { tap(.a, before: s) }
-                TeamButton(team: .b, state: s) { tap(.b, before: s) }
+                HStack(spacing: 6) {
+                    TeamButton(team: .a, state: s) { tap(.a, before: s) }
+                    TeamButton(team: .b, state: s) { tap(.b, before: s) }
+                }
+                footer(match)
             }
             .padding(.horizontal, 2)
+            .overlay(alignment: .center) {
+                if showChangeOfEnds {
+                    Label("Cambio de lado", systemImage: "arrow.left.arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent, in: Capsule())
+                        .transition(.scale.combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
+            .onAppear { seenEvents = match.events.count }
+            .onChange(of: match.events.count) { _, count in
+                // Avisar del cambio de lado solo cuando se suma un punto (aquí o desde el iPhone).
+                if count > seenEvents && match.changeOfEnds {
+                    WKInterfaceDevice.current().play(.directionUp)
+                    withAnimation(.snappy) { showChangeOfEnds = true }
+                    Task {
+                        try? await Task.sleep(for: .seconds(2.5))
+                        withAnimation(.snappy) { showChangeOfEnds = false }
+                    }
+                }
+                seenEvents = count
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -55,6 +86,24 @@ struct WatchScoreView: View {
             .minimumScaleFactor(0.7)
     }
 
+    /// Tiempo de juego y pulso, en una línea discreta debajo de los cuadros.
+    private func footer(_ match: Match) -> some View {
+        HStack(spacing: 8) {
+            TimelineView(.periodic(from: match.startedAt, by: 1)) { context in
+                Text(Duration.seconds(max(0, context.date.timeIntervalSince(match.startedAt))),
+                     format: .time(pattern: .minuteSecond))
+            }
+            if workout.isRunning && workout.heartRate > 0 {
+                Label("\(Int(workout.heartRate))", systemImage: "heart.fill")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.system(size: 11, weight: .medium, design: .rounded))
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .labelStyle(.titleAndIcon)
+    }
+
     private func tap(_ team: Team, before: ScoreState) {
         store.point(team)
         guard let after = store.current?.state else { return }
@@ -74,35 +123,55 @@ private struct TeamButton: View {
     let state: ScoreState
     let action: () -> Void
 
+    private var color: Color { Theme.color(team) }
+    private var serving: Bool { state.server == team && state.config.sport == .padel && !state.isFinished }
+
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 6) {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 4) {
-                        if state.server == team && state.config.sport == .padel {
-                            Circle().fill(Theme.accent).frame(width: 7, height: 7)
-                        }
-                        Text(state.config.name(of: team))
-                            .font(.system(size: 12, weight: .medium))
-                            .lineLimit(1)
+            VStack(spacing: 0) {
+                HStack(spacing: 3) {
+                    if serving {
+                        Circle().fill(Theme.accent).frame(width: 6, height: 6)
                     }
-                    if state.config.sport == .padel {
-                        Text("Juegos \(state.games[team])")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(state.config.name(of: team))
+                        .font(.system(size: 11, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
+                .foregroundStyle(color)
+                .frame(maxWidth: .infinity)
+
                 Spacer(minLength: 0)
+
                 Text(state.pointLabel(for: team))
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: 46, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .foregroundStyle(.white)
+
+                Spacer(minLength: 0)
+
+                if state.config.sport == .padel {
+                    HStack(spacing: 3) {
+                        Text("JUEGOS").font(.system(size: 8, weight: .bold)).tracking(0.5)
+                        Text("\(state.games[team])").font(.system(size: 13, weight: .bold, design: .rounded)).monospacedDigit()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(color.opacity(0.35), in: Capsule())
+                    .foregroundStyle(.white)
+                }
             }
-            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.color(team).opacity(0.28), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.color(team), lineWidth: 1.5))
+            .background(
+                LinearGradient(colors: [color.opacity(0.45), color.opacity(0.12)], startPoint: .top, endPoint: .bottom),
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(color, lineWidth: serving ? 2 : 1))
         }
         .buttonStyle(.plain)
         .disabled(state.isFinished)
@@ -137,6 +206,7 @@ private struct WinnerOverlay: View {
 
 private struct WatchOptionsView: View {
     @Environment(MatchStore.self) private var store
+    @Environment(WorkoutManager.self) private var workout
     @Environment(\.dismiss) private var dismiss
     let match: Match
 
@@ -165,6 +235,12 @@ private struct WatchOptionsView: View {
                 Button("Terminar partido", role: .destructive) {
                     dismiss()
                     store.endMatch()
+                }
+            }
+            if workout.isRunning {
+                Section("Entrenamiento") {
+                    LabeledContent("Pulso", value: workout.heartRate > 0 ? "\(Int(workout.heartRate)) lpm" : "—")
+                    LabeledContent("Calorías", value: "\(Int(workout.activeCalories)) kcal")
                 }
             }
             Section {

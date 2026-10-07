@@ -167,6 +167,28 @@ public struct ScoreState: Codable, Equatable, Sendable {
         }
     }
 
+    // MARK: - Cambio de lado
+
+    /// Juegos jugados en todo el partido (un tie-break cuenta como un juego).
+    public var totalGamesPlayed: Int {
+        sets.reduce(0) { $0 + $1.games.total } + games.total
+    }
+
+    /// Si entre `before` y `after` (un punto de diferencia) toca cambiar de lado:
+    /// después de cada juego impar del partido y cada 6 puntos en un tie-break.
+    public static func isChangeOfEnds(before: ScoreState, after: ScoreState) -> Bool {
+        guard after.config.sport == .padel, after.winner == nil else { return false }
+        let gamesBefore = before.totalGamesPlayed
+        let gamesAfter = after.totalGamesPlayed
+        if gamesAfter > gamesBefore {
+            return gamesAfter % 2 == 1
+        }
+        if after.inTiebreak && after.points.total > 0 && after.points.total % 6 == 0 {
+            return true
+        }
+        return false
+    }
+
     // MARK: - Textos para la pantalla
 
     /// Lo que se muestra como puntos de un equipo: "15", "40", "AD", "7"…

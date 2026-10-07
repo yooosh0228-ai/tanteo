@@ -6,6 +6,8 @@ struct LiveView: View {
     @Environment(MatchStore.self) private var store
     @State private var showSetup = false
     @State private var confirmEnd = false
+    @State private var showChangeOfEnds = false
+    @State private var seenEvents = 0
 
     var body: some View {
         Group {
@@ -42,9 +44,22 @@ struct LiveView: View {
         let s = match.state
         return VStack(spacing: 16) {
             VStack(spacing: 4) {
-                Text(s.config.rulesSummary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Text(s.config.rulesSummary)
+                    if !s.isFinished {
+                        TimelineView(.periodic(from: match.startedAt, by: 1)) { context in
+                            Label {
+                                Text(Duration.seconds(max(0, context.date.timeIntervalSince(match.startedAt))),
+                                     format: .time(pattern: .minuteSecond))
+                            } icon: {
+                                Image(systemName: "stopwatch")
+                            }
+                            .monospacedDigit()
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 if let status = s.statusLabel {
                     Text(status)
                         .font(.headline)
@@ -81,6 +96,30 @@ struct LiveView: View {
             Spacer(minLength: 0)
         }
         .padding()
+        .overlay(alignment: .top) {
+            if showChangeOfEnds {
+                Label("Cambio de lado", systemImage: "arrow.left.arrow.right")
+                    .font(.headline)
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Theme.accent, in: Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .onAppear { seenEvents = match.events.count }
+        .onChange(of: match.events.count) { _, count in
+            if count > seenEvents && match.changeOfEnds {
+                withAnimation(.snappy) { showChangeOfEnds = true }
+                Task {
+                    try? await Task.sleep(for: .seconds(2.5))
+                    withAnimation(.snappy) { showChangeOfEnds = false }
+                }
+            }
+            seenEvents = count
+        }
+        .sensoryFeedback(.warning, trigger: showChangeOfEnds) { _, new in new }
         .confirmationDialog("¿Terminar el partido?", isPresented: $confirmEnd, titleVisibility: .visible) {
             Button("Terminar y guardar", role: .destructive) { store.endMatch() }
         } message: {

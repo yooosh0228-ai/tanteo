@@ -151,6 +151,7 @@ final class ScoreKitTests: XCTestCase {
         let data = try JSONEncoder().encode(m)
         let copy = try JSONDecoder().decode(Match.self, from: data)
         XCTAssertEqual(copy, m)
+        XCTAssertEqual(copy.state, m.state)
     }
 
     func testUndoAcrossGame() {
@@ -160,5 +161,51 @@ final class ScoreKitTests: XCTestCase {
         m.undo()
         XCTAssertEqual(m.state.games, Pair(0, 0))
         XCTAssertEqual(m.state.pointLabel(for: .a), "40")
+    }
+
+    func testChangeOfEnds() {
+        var m = Match(config: MatchConfig())
+        for _ in 0..<3 { m.addPoint(to: .a) }
+        XCTAssertFalse(m.changeOfEnds)
+        m.addPoint(to: .a) // 1-0: juego impar → cambio
+        XCTAssertTrue(m.changeOfEnds)
+        for _ in 0..<4 { m.addPoint(to: .b) } // 1-1
+        XCTAssertFalse(m.changeOfEnds)
+        for _ in 0..<4 { m.addPoint(to: .b) } // 1-2
+        XCTAssertTrue(m.changeOfEnds)
+    }
+
+    func testChangeOfEndsInTiebreak() {
+        var m = Match(config: MatchConfig())
+        for _ in 0..<6 {
+            for _ in 0..<4 { m.addPoint(to: .a) }
+            for _ in 0..<4 { m.addPoint(to: .b) }
+        }
+        XCTAssertTrue(m.state.inTiebreak)
+        for i in 1...6 {
+            m.addPoint(to: i % 2 == 0 ? .a : .b)
+            XCTAssertEqual(m.changeOfEnds, i == 6)
+        }
+    }
+
+    func testServerOverrideAndUndoReplay() throws {
+        var m = Match(config: MatchConfig())
+        m.addPoint(to: .a)
+        m.setServer(.b)
+        XCTAssertEqual(m.state.server, .b)
+        m.undo() // quita el punto y el cambio de saque posterior
+        XCTAssertEqual(m.state.points, Pair(0, 0))
+        XCTAssertEqual(m.state.server, .a)
+        XCTAssertFalse(m.canUndo)
+
+        for _ in 0..<10 { m.addPoint(to: .b) }
+        let copy = try JSONDecoder().decode(Match.self, from: JSONEncoder().encode(m))
+        XCTAssertEqual(copy.state, m.state)
+    }
+
+    func testLongestStreak() {
+        var m = Match(config: MatchConfig(sport: .generic, targetPoints: 50))
+        for t: Team in [.a, .a, .b, .a, .a, .a, .b, .b] { m.addPoint(to: t) }
+        XCTAssertEqual(m.longestStreak, Pair(3, 2))
     }
 }
