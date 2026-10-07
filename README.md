@@ -40,3 +40,4 @@ Hace falta la cuenta de Apple Developer (US$99 al año). Con ella:
 4. Instalar TestFlight en el iPhone, instalar Tanteo y, desde su página en TestFlight, instalarla en el Apple Watch.
 
 Con una Mac a mano también se puede: `brew install xcodegen && xcodegen generate`, abrir `Tanteo.xcodeproj` y darle Run con el iPhone conectado.
+
