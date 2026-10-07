@@ -1,0 +1,80 @@
+# Proyecto de Xcode descrito en texto. GitHub (o cualquier Mac) lo convierte en Tanteo.xcodeproj con:
+#   brew install xcodegen && xcodegen generate
+name: Tanteo
+
+options:
+  bundleIdPrefix: com.visionstudios
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Pon aquí tu Team ID de Apple cuando tengas la cuenta de desarrollador.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  ScoreKit:
+    path: ScoreKit
+
+targets:
+  Tanteo:
+    type: application
+    platform: iOS
+    sources:
+      - iOSApp
+      - Shared
+    dependencies:
+      - package: ScoreKit
+      - target: TanteoWatch
+    info:
+      path: iOSApp/Info.plist
+      properties:
+        CFBundleDisplayName: Tanteo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.visionstudios.tanteo
+        TARGETED_DEVICE_FAMILY: "1"
+
+  TanteoWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - WatchApp
+      - Shared
+    dependencies:
+      - package: ScoreKit
+    info:
+      path: WatchApp/Info.plist
+      properties:
+        CFBundleDisplayName: Tanteo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.visionstudios.tanteo
+        WKRunsIndependentlyOfCompanionApp: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.visionstudios.tanteo.watchkitapp
+        TARGETED_DEVICE_FAMILY: "4"
+
+schemes:
+  Tanteo:
+    build:
+      targets:
+        Tanteo: all
+        TanteoWatch: all
+  TanteoWatch:
+    build:
+      targets:
+        TanteoWatch: all
